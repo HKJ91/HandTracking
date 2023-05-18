@@ -1,0 +1,63 @@
+!pip install mediapipe
+import cv2
+import mediapipe as mp
+import time
+from google.colab.patches import cv2_imshow
+############################## Download video for tracking ##############################
+!pip install wget
+import wget
+URL2="https://www.shutterstock.com/shutterstock/videos/1030678700/preview/stock-footage-white-man-hand-open-and-close-hand-hand-sign-on-white-background-business-marketing-teaching.webm"
+d1 = wget.download(URL2, "Hand2.mp4")
+
+############################## Main: detect hands and save the result in a specific directory ##############################
+VIDEO_STREAM = "/content/Hand3.mp4"
+VIDEO_STREAM_OUT = "/content/result.mp4"
+
+cap = cv2.VideoCapture(VIDEO_STREAM)
+writer = None
+
+frame_width = int(cap.get(3))
+frame_height = int(cap.get(4)) 
+size = (frame_width, frame_height)
+
+mpHands = mp.solutions.hands
+hands = mpHands.Hands(static_image_mode=False, max_num_hands=2, min_detection_confidence=0.5, min_tracking_confidence=0.5)
+mpDraw=mp.solutions.drawing_utils
+
+fourcc = cv2.VideoWriter_fourcc(*"XVID")
+writer = cv2.VideoWriter(VIDEO_STREAM_OUT, fourcc, 30, size, True)
+
+pTime = 0
+cTime = 0
+i = 0
+while(i<248):
+  i+=1
+  print(i)
+  success, img = cap.read()
+  imgRGB = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+  results = hands.process(imgRGB)
+  #print(results.multi_hand_landmarks)
+  if results.multi_hand_landmarks:
+    for hand in results.multi_hand_landmarks:
+      for id, lm in enumerate(hand.landmark):
+        #print(id, lm)
+        h, w, c = img.shape
+        cx, cy = int(lm.x*w), int(lm.y*h) #posiiton of each point
+        #print(id, cx, cy)
+        if id==4:
+          cv2.circle(img,(cx, cy), 10, (255,0,255), cv2.FILLED)
+      mpDraw.draw_landmarks(img, hand, mpHands.HAND_CONNECTIONS)
+
+  cTime = time.time()
+  fps = 1/(cTime-pTime)
+  pTime = cTime
+  cv2.putText(img, str(int(fps)), (10,70), cv2.FONT_HERSHEY_PLAIN, 3, (255,0,255), 3)
+
+  writer.write(img)
+  #cv2_imshow(img)
+  #cv2.waitKey(1)
+  
+#Release the file pointers
+print("[INFO] cleaning up...")
+writer.release()
+cap.release()
